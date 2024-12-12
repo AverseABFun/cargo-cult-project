@@ -4,13 +4,11 @@ toolchains = [
         "rustfmt",
         "rustc",
         "cargo",
-    ], crate_id = "2021-nightly-complete" },
+    ], crate_id = "2021-nightly-complete", platforms = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-gnu"], targets = ["x86_64-unknown-linux-gnu"]},
 ]
 
 [x64_package_linux_rust_pkg_gen.meta]
 offline = true
-platforms = ["x86_64-unknown-linux-gnu"]
-targets = ["x86_64-unknown-linux-gnu"]
 
 [x64_package_linux_rust_pkg_gen.crates]
 "2021-nightly-complete" = { "syn" = "2.0.90" }

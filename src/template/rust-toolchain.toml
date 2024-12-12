@@ -1,5 +1,5 @@
 [toolchain]
 channel = "{?TOOLCHAIN.CHANNEL}"
 components = [ {?TOOLCHAIN.COMPONENTS} ]
-targets = [ {?META.TARGETS} ]
+targets = [ {?TOOLCHAIN.TARGETS} ]
 profile = "{?TOOLCHAIN.PROFILE}"

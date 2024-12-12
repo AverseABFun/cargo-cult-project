@@ -13,13 +13,13 @@ pub struct Toolchain {
     pub profile: String,
     pub components: Vec<String>,
     pub crate_id: String,
+    pub platforms: Vec<String>,
+    pub targets: Vec<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Meta {
     pub offline: bool,
-    pub platforms: Vec<String>,
-    pub targets: Vec<String>,
 }
 
 pub type Crate = String;

@@ -1,7 +1,7 @@
 use clap::Parser;
 use rand::{Rng, SeedableRng};
 use rust_pkg_gen::resources::TemplateAssets;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 fn gen_char() -> u8 {
     rand::rngs::StdRng::from_entropy().gen_range(65..90)
@@ -60,7 +60,7 @@ fn main() {
         gen_char(),
     ];
     let dir = if args.temp_dir.is_some() {
-        if args.temp_dir.clone().unwrap().exists() && !args.yes {
+        if args.temp_dir.clone().unwrap().exists() && !args.overwrite {
             let confirmation = dialoguer::Confirm::new()
                 .with_prompt("Provided temporary directory already exists, overwrite?")
                 .default(false)
@@ -103,8 +103,8 @@ fn main() {
                         .replace("{?TOOLCHAIN.CHANNEL}", &toolchain.channel)
                         .replace("{?TOOLCHAIN.PROFILE}", &toolchain.profile)
                         .replace(
-                            "{?META.TARGETS}",
-                            &("\"".to_owned() + &cfg.meta.targets.join("\",\"") + "\""),
+                            "{?TOOLCHAIN.TARGETS}",
+                            &("\"".to_owned() + &toolchain.targets.join("\",\"") + "\""),
                         )
                         .replace(
                             "{?TOOLCHAIN.COMPONENTS}",
@@ -126,13 +126,16 @@ fn main() {
                 .unwrap();
 
             rust_pkg_gen::copied::download_all(
-                vec!["nightly"],
+                vec![&toolchain.channel],
                 rust_pkg_gen::copied::DEFAULT_UPSTREAM_URL,
                 dir.join("tmp").to_str().unwrap(),
-                vec!["x86_64-unknown-linux-gnu"],
+                toolchain.targets.iter().map(|s| &**s).collect(),
                 dir.join("toolchain").to_str().unwrap(),
-                vec!["rustfmt", "rustc", "cargo"],
+                toolchain.components.iter().map(|s| &**s).collect(),
+                toolchain.platforms.iter().map(|s| &**s).collect()
             );
+
+            fs::remove_dir_all(dir.join("tmp").to_str().unwrap()).unwrap();
         }
     }
 }

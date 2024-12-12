@@ -83,7 +83,23 @@ pub fn download_all(
     targets: Vec<&str>,
     to_path: &str,
     components: Vec<&str>,
+    for_targets: Vec<&str>,
 ) {
+    for channel in channels.clone() {
+        if !crate::targets::RELEASE_CHANNELS.contains(&channel) {
+            return;
+        }
+    }
+    for target in targets.clone() {
+        if !crate::targets::TARGETS.contains(&target) {
+            return;
+        }
+    }
+    for target in for_targets.clone() {
+        if !crate::targets::TARGETS.contains(&target) {
+            return;
+        }
+    }
     let mut all_targets = HashSet::new();
 
     // All referenced files
@@ -115,6 +131,98 @@ pub fn download_all(
             channel,
             value["date"].as_str().unwrap()
         );
+
+        for ele in for_targets.clone() {
+            if ele.contains("windows") {
+                let artifacts = value["artifacts"]["installer-msi"]["target"][ele][0].as_table_mut().unwrap();
+
+                let url =
+                    Url::parse(artifacts["url"].as_str().unwrap())
+                        .unwrap();
+                let mirror = Path::new(to_path);
+                let file_name = url.path().replace("%20", " ");
+                let file = mirror.join(&file_name[1..]);
+
+                let hash_file = mirror.join(format!("{}.sha256", &file_name[1..]));
+                let hash_file_cont =
+                    File::open(hash_file.clone()).ok().and_then(|mut f| {
+                        let mut cont = String::new();
+                        f.read_to_string(&mut cont).ok().map(|_| cont)
+                    });
+
+                let hash_file_missing = hash_file_cont.is_none();
+                let mut hash_file_cont =
+                    hash_file_cont.or_else(|| file_sha256(file.as_path()));
+
+                let chksum_upstream =
+                    artifacts["hash-sha256"].as_str().unwrap();
+
+                let need_download = match hash_file_cont {
+                    Some(ref chksum) => chksum_upstream != chksum,
+                    None => true,
+                };
+
+                if need_download {
+                    download(upstream_url, to_path, &file_name[1..]).unwrap();
+                    hash_file_cont = file_sha256(file.as_path());
+                    assert_eq!(Some(chksum_upstream), hash_file_cont.as_deref());
+                } else {
+                    println!("File {} already downloaded, skipping", file_name);
+                }
+
+                if need_download || hash_file_missing {
+                    File::create(hash_file)
+                        .unwrap()
+                        .write_all(hash_file_cont.unwrap().as_bytes())
+                        .unwrap();
+                    println!("Writing checksum for file {}", file_name);
+                }
+            } else if ele.contains("darwin") {
+                let artifacts = value["artifacts"]["installer-pkg"]["target"][ele].as_table_mut().unwrap();
+
+                let url =
+                    Url::parse(artifacts["url"].as_str().unwrap())
+                        .unwrap();
+                let mirror = Path::new(to_path);
+                let file_name = url.path().replace("%20", " ");
+                let file = mirror.join(&file_name[1..]);
+
+                let hash_file = mirror.join(format!("{}.sha256", &file_name[1..]));
+                let hash_file_cont =
+                    File::open(hash_file.clone()).ok().and_then(|mut f| {
+                        let mut cont = String::new();
+                        f.read_to_string(&mut cont).ok().map(|_| cont)
+                    });
+
+                let hash_file_missing = hash_file_cont.is_none();
+                let mut hash_file_cont =
+                    hash_file_cont.or_else(|| file_sha256(file.as_path()));
+
+                let chksum_upstream =
+                    artifacts["hash-sha256"].as_str().unwrap();
+
+                let need_download = match hash_file_cont {
+                    Some(ref chksum) => chksum_upstream != chksum,
+                    None => true,
+                };
+
+                if need_download {
+                    download(upstream_url, to_path, &file_name[1..]).unwrap();
+                    hash_file_cont = file_sha256(file.as_path());
+                    assert_eq!(Some(chksum_upstream), hash_file_cont.as_deref());
+                } else {
+                    println!("File {} already downloaded, skipping", file_name);
+                }
+
+                if need_download || hash_file_missing {
+                    File::create(hash_file)
+                        .unwrap()
+                        .write_all(hash_file_cont.unwrap().as_bytes())
+                        .unwrap();
+                    println!("Writing checksum for file {}", file_name);
+                }
+            }
+        }
 
         let pkgs = value["pkg"].as_table_mut().unwrap();
         let keys: Vec<String> = pkgs.keys().cloned().collect();
