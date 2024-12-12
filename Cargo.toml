@@ -1,0 +1,14 @@
+[package]
+name = "rust-pkg-gen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.23", features = ["derive"]}
+clap_complete = "4.5.38"
+clap_mangen = "0.2.24"
+rand = "0.8.5"
+regex = "1.11.1"
+rust-embed = "8.5.0"
+serde = {version="1.0.215", features = ["derive"]}
+toml = "0.8.19"

@@ -1,0 +1,7 @@
+[package]
+name = "download"
+version = "0.1.0"
+edition = "{?TOOLCHAIN.EDITION}"
+
+[dependencies]
+{?CRATES}
