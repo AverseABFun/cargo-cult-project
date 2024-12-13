@@ -84,6 +84,7 @@ pub fn download_all(
     to_path: &str,
     components: Vec<&str>,
     for_targets: Vec<&str>,
+    quiet: bool,
 ) {
     for channel in channels.clone() {
         if !crate::targets::RELEASE_CHANNELS.contains(&channel) {
@@ -126,36 +127,35 @@ pub fn download_all(
 
         let mut value = data.parse::<Value>().unwrap();
         assert_eq!(value["manifest-version"].as_str(), Some("2"));
-        println!(
-            "Channel {} date {}",
-            channel,
-            value["date"].as_str().unwrap()
-        );
+        if !quiet {
+            println!(
+                "Channel {} date {}",
+                channel,
+                value["date"].as_str().unwrap()
+            );
+        }
 
         for ele in for_targets.clone() {
             if ele.contains("windows") {
-                let artifacts = value["artifacts"]["installer-msi"]["target"][ele][0].as_table_mut().unwrap();
+                let artifacts = value["artifacts"]["installer-msi"]["target"][ele][0]
+                    .as_table_mut()
+                    .unwrap();
 
-                let url =
-                    Url::parse(artifacts["url"].as_str().unwrap())
-                        .unwrap();
+                let url = Url::parse(artifacts["url"].as_str().unwrap()).unwrap();
                 let mirror = Path::new(to_path);
                 let file_name = url.path().replace("%20", " ");
                 let file = mirror.join(&file_name[1..]);
 
                 let hash_file = mirror.join(format!("{}.sha256", &file_name[1..]));
-                let hash_file_cont =
-                    File::open(hash_file.clone()).ok().and_then(|mut f| {
-                        let mut cont = String::new();
-                        f.read_to_string(&mut cont).ok().map(|_| cont)
-                    });
+                let hash_file_cont = File::open(hash_file.clone()).ok().and_then(|mut f| {
+                    let mut cont = String::new();
+                    f.read_to_string(&mut cont).ok().map(|_| cont)
+                });
 
                 let hash_file_missing = hash_file_cont.is_none();
-                let mut hash_file_cont =
-                    hash_file_cont.or_else(|| file_sha256(file.as_path()));
+                let mut hash_file_cont = hash_file_cont.or_else(|| file_sha256(file.as_path()));
 
-                let chksum_upstream =
-                    artifacts["hash-sha256"].as_str().unwrap();
+                let chksum_upstream = artifacts["hash-sha256"].as_str().unwrap();
 
                 let need_download = match hash_file_cont {
                     Some(ref chksum) => chksum_upstream != chksum,
@@ -166,7 +166,7 @@ pub fn download_all(
                     download(upstream_url, to_path, &file_name[1..]).unwrap();
                     hash_file_cont = file_sha256(file.as_path());
                     assert_eq!(Some(chksum_upstream), hash_file_cont.as_deref());
-                } else {
+                } else if !quiet {
                     println!("File {} already downloaded, skipping", file_name);
                 }
 
@@ -175,31 +175,30 @@ pub fn download_all(
                         .unwrap()
                         .write_all(hash_file_cont.unwrap().as_bytes())
                         .unwrap();
-                    println!("Writing checksum for file {}", file_name);
+                    if !quiet {
+                        println!("Writing checksum for file {}", file_name);
+                    }
                 }
             } else if ele.contains("darwin") {
-                let artifacts = value["artifacts"]["installer-pkg"]["target"][ele].as_table_mut().unwrap();
+                let artifacts = value["artifacts"]["installer-pkg"]["target"][ele]
+                    .as_table_mut()
+                    .unwrap();
 
-                let url =
-                    Url::parse(artifacts["url"].as_str().unwrap())
-                        .unwrap();
+                let url = Url::parse(artifacts["url"].as_str().unwrap()).unwrap();
                 let mirror = Path::new(to_path);
                 let file_name = url.path().replace("%20", " ");
                 let file = mirror.join(&file_name[1..]);
 
                 let hash_file = mirror.join(format!("{}.sha256", &file_name[1..]));
-                let hash_file_cont =
-                    File::open(hash_file.clone()).ok().and_then(|mut f| {
-                        let mut cont = String::new();
-                        f.read_to_string(&mut cont).ok().map(|_| cont)
-                    });
+                let hash_file_cont = File::open(hash_file.clone()).ok().and_then(|mut f| {
+                    let mut cont = String::new();
+                    f.read_to_string(&mut cont).ok().map(|_| cont)
+                });
 
                 let hash_file_missing = hash_file_cont.is_none();
-                let mut hash_file_cont =
-                    hash_file_cont.or_else(|| file_sha256(file.as_path()));
+                let mut hash_file_cont = hash_file_cont.or_else(|| file_sha256(file.as_path()));
 
-                let chksum_upstream =
-                    artifacts["hash-sha256"].as_str().unwrap();
+                let chksum_upstream = artifacts["hash-sha256"].as_str().unwrap();
 
                 let need_download = match hash_file_cont {
                     Some(ref chksum) => chksum_upstream != chksum,
@@ -210,7 +209,7 @@ pub fn download_all(
                     download(upstream_url, to_path, &file_name[1..]).unwrap();
                     hash_file_cont = file_sha256(file.as_path());
                     assert_eq!(Some(chksum_upstream), hash_file_cont.as_deref());
-                } else {
+                } else if !quiet {
                     println!("File {} already downloaded, skipping", file_name);
                 }
 
@@ -219,7 +218,9 @@ pub fn download_all(
                         .unwrap()
                         .write_all(hash_file_cont.unwrap().as_bytes())
                         .unwrap();
-                    println!("Writing checksum for file {}", file_name);
+                    if !quiet {
+                        println!("Writing checksum for file {}", file_name);
+                    }
                 }
             }
         }
@@ -281,7 +282,7 @@ pub fn download_all(
                             download(upstream_url, to_path, &file_name[1..]).unwrap();
                             hash_file_cont = file_sha256(file.as_path());
                             assert_eq!(Some(chksum_upstream), hash_file_cont.as_deref());
-                        } else {
+                        } else if !quiet {
                             println!("File {} already downloaded, skipping", file_name);
                         }
 
@@ -290,7 +291,9 @@ pub fn download_all(
                                 .unwrap()
                                 .write_all(hash_file_cont.unwrap().as_bytes())
                                 .unwrap();
-                            println!("Writing checksum for file {}", file_name);
+                            if !quiet {
+                                println!("Writing checksum for file {}", file_name);
+                            }
                         }
 
                         pkg_target.insert(
@@ -306,13 +309,17 @@ pub fn download_all(
         let path = Path::new(to_path).join(&name);
         create_dir_all(path.parent().unwrap()).unwrap();
         let mut file = File::create(path.clone()).unwrap();
-        println!("Producing /{}", name);
+        if !quiet {
+            println!("Producing /{}", name);
+        }
         file.write_all(output.as_bytes()).unwrap();
 
         let sha256_new_file = file_sha256(&path).unwrap();
         let sha256_new_file_path = Path::new(to_path).join(&sha256_name);
         let mut file = File::create(sha256_new_file_path.clone()).unwrap();
-        println!("Producing /{}", sha256_name);
+        if !quiet {
+            println!("Producing /{}", sha256_name);
+        }
         file.write_all(format!("{}  channel-rust-{}.toml", sha256_new_file, channel).as_bytes())
             .unwrap();
 
@@ -322,12 +329,16 @@ pub fn download_all(
         let alt_path = Path::new(to_path).join(&alt_name);
         create_dir_all(alt_path.parent().unwrap()).unwrap();
         copy(path, alt_path).unwrap();
-        println!("Producing /{}", alt_name);
+        if !quiet {
+            println!("Producing /{}", alt_name);
+        }
 
         let alt_sha256_new_file_name =
             format!("dist/{}/channel-rust-{}.toml.sha256", date, channel);
         let alt_sha256_new_file_path = Path::new(to_path).join(&alt_sha256_new_file_name);
         copy(sha256_new_file_path, alt_sha256_new_file_path).unwrap();
-        println!("Producing /{}", alt_sha256_new_file_name);
+        if !quiet {
+            println!("Producing /{}", alt_sha256_new_file_name);
+        }
     }
 }
