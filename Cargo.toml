@@ -2,9 +2,14 @@
 name = "rust-pkg-gen"
 version = "0.1.0"
 edition = "2021"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/AverseABFun/rust-pkg-gen"
+homepage = "https://github.com/AverseABFun/rust-pkg-gen"
+authors = ["Arthur Beck <averse.abfun@gmail.com>"]
 
 [dependencies]
 anyhow = "1.0.94"
+cargo-local-registry = { version = "0.2.7", artifact = "bin" }
 clap = { version = "4.5.23", features = ["derive"] }
 clap_complete = "4.5.38"
 clap_mangen = "0.2.24"
@@ -23,3 +28,6 @@ url = "2.5.4"
 [profile.release]
 opt-level = "s"
 debug-assertions = false # required to change the default behavior of --temp-dir
+
+[dev-dependencies]
+proptest = "1.5.0"

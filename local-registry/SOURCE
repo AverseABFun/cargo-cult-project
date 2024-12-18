@@ -1,0 +1,3 @@
+Github repo: https://github.com/dhovart/cargo-local-registry
+Crates.io: https://crates.io/crates/cargo-local-registry
+Build requirements: Have GCC, OpenSSL, and CMake in the path.

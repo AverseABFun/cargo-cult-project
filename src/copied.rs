@@ -5,7 +5,7 @@
 use anyhow::{anyhow, Error};
 use filebuffer::FileBuffer;
 use sha2::{Digest, Sha256};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::{copy, create_dir_all, File};
 use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
@@ -25,6 +25,7 @@ fn file_sha256(file_path: &Path) -> Option<String> {
 }
 
 fn download(upstream_url: &str, dir: &str, path: &str) -> Result<PathBuf, Error> {
+    println!("Downloading file {}...", path);
     let manifest = format!("{}{}", upstream_url, path);
     let mut response = reqwest::blocking::get(&manifest)?;
     let mirror = Path::new(dir);
@@ -85,6 +86,7 @@ pub fn download_all(
     components: Vec<&str>,
     for_targets: Vec<&str>,
     quiet: bool,
+    format_map: HashMap<&str, Vec<crate::Format>>,
 ) {
     for channel in channels.clone() {
         if !crate::targets::RELEASE_CHANNELS.contains(&channel) {
@@ -127,13 +129,6 @@ pub fn download_all(
 
         let mut value = data.parse::<Value>().unwrap();
         assert_eq!(value["manifest-version"].as_str(), Some("2"));
-        if !quiet {
-            println!(
-                "Channel {} date {}",
-                channel,
-                value["date"].as_str().unwrap()
-            );
-        }
 
         for ele in for_targets.clone() {
             if ele.contains("windows") {

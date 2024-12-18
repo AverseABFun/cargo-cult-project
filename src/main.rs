@@ -1,7 +1,11 @@
 use clap::Parser;
 use rand::{Rng, SeedableRng};
 use rust_pkg_gen::resources::TemplateAssets;
-use std::{fs, path::PathBuf, process::Stdio};
+use std::{
+    fs::{self, write},
+    path::PathBuf,
+    process::Stdio,
+};
 
 fn gen_char() -> u8 {
     rand::rngs::StdRng::from_entropy().gen_range(65..90)
@@ -63,7 +67,7 @@ fn generate_crates(
 ) -> String {
     let mut out: String = String::new();
     for (crte, version) in cfg.crates.get(&toolchain.crate_id).unwrap() {
-        out = format!("{}{} = \"{}\"\n", out, crte, version).to_string();
+        out = format!("{}{} = \"{}\"\n", out, crte, version.clone().serialize()).to_string();
     }
     out
 }
@@ -155,6 +159,10 @@ fn main() {
                 dir.join(PathBuf::from("crates"))
                     .join(PathBuf::from("build.sh")),
             );
+            build = build.env(
+                "CARGO_BIN_FILE_CARGO_LOCAL_REGISTRY",
+                env!("CARGO_BIN_FILE_CARGO_LOCAL_REGISTRY"),
+            );
             if args.quiet {
                 build = build
                     .stdout(Stdio::null())
@@ -165,6 +173,18 @@ fn main() {
                 build = build.arg("save")
             }
             build.spawn().unwrap().wait().unwrap();
+            write(
+                dir.join(PathBuf::from("crates"))
+                    .join(PathBuf::from("README.md")),
+                include_str!("crates_README.md").replace(
+                    "{?TOOLCHAIN.CRATES_DIR}",
+                    fs::canonicalize(dir.join(PathBuf::from("crates")))
+                        .unwrap()
+                        .to_str()
+                        .unwrap(),
+                ),
+            )
+            .unwrap();
 
             rust_pkg_gen::copied::download_all(
                 vec![&toolchain.channel],
@@ -175,6 +195,10 @@ fn main() {
                 toolchain.components.iter().map(|s| &**s).collect(),
                 toolchain.platforms.iter().map(|s| &**s).collect(),
                 args.quiet,
+                toolchain
+                    .format_map
+                    .iter()
+                    .map(|(k, v)| (k, cfg.formats[v])),
             );
 
             if !args.save_temp {
