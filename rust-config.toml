@@ -1,6 +1,6 @@
 [x64_package_linux_rust_pkg_gen]
 toolchains = [
-    { edition = "2021", channel = "nightly", profile = "complete", components = [
+    { edition = "2021", channel = "nightly", components = [
         "rustfmt",
         "rustc",
         "cargo",

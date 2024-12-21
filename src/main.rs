@@ -1,3 +1,8 @@
+#![warn(missing_docs)]
+
+//! The binary entrypoint to rust-pkg-gen. Currently contains most of the code,
+//! but that will be changed eventually as a non-breaking change.
+
 use clap::Parser;
 use rand::{Rng, SeedableRng};
 use rust_pkg_gen::resources::TemplateAssets;
@@ -44,7 +49,7 @@ struct Cli {
         short = 'q',
         long = "quiet",
         default_value_t = false,
-        help = "Doesn't display any unnecessary text(still shows confirmation prompts; to remove, use --overwrite"
+        help = "Doesn't display any unnecessary text(still shows confirmation prompts; to remove, use -y --overwrite as well or --silent."
     )]
     quiet: bool,
     #[arg(
@@ -67,7 +72,7 @@ fn generate_crates(
 ) -> String {
     let mut out: String = String::new();
     for (crte, version) in cfg.crates.get(&toolchain.crate_id).unwrap() {
-        out = format!("{}{} = \"{}\"\n", out, crte, version.clone().serialize()).to_string();
+        out = format!("{}{} = {}\n", out, crte, version.clone().serialize()).to_string();
     }
     out
 }
@@ -140,7 +145,6 @@ fn main() {
                         .unwrap()
                         .replace("{?TOOLCHAIN.EDITION}", &toolchain.edition)
                         .replace("{?TOOLCHAIN.CHANNEL}", &toolchain.channel)
-                        .replace("{?TOOLCHAIN.PROFILE}", &toolchain.profile)
                         .replace(
                             "{?TOOLCHAIN.TARGETS}",
                             &("\"".to_owned() + &toolchain.targets.join("\",\"") + "\""),
@@ -176,7 +180,7 @@ fn main() {
             write(
                 dir.join(PathBuf::from("crates"))
                     .join(PathBuf::from("README.md")),
-                include_str!("crates_README.md").replace(
+                rust_pkg_gen::resources::CRATES_README.replace(
                     "{?TOOLCHAIN.CRATES_DIR}",
                     fs::canonicalize(dir.join(PathBuf::from("crates")))
                         .unwrap()
@@ -198,7 +202,8 @@ fn main() {
                 toolchain
                     .format_map
                     .iter()
-                    .map(|(k, v)| (k, cfg.formats[v])),
+                    .map(|(k, v)| (k.as_str(), cfg.formats[v].clone()))
+                    .collect(),
             );
 
             if !args.save_temp {

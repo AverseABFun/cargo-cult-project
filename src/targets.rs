@@ -1,5 +1,15 @@
+//! Contains all valid targets and channels. Copied and modified from [rustup-mirror](https://crates.io/crates/rustup-mirror/0.8.1).
+
+/// Valid rust channels. Currently only stable, beta, and nightly.
 pub const RELEASE_CHANNELS: [&str; 3] = ["stable", "beta", "nightly"];
 
+/// List of valid rust targets. According to rustup-mirror, can be generated with:
+/// ```bash
+/// rustc --print target-list | awk '{print "    \"" $1 "\","}'
+/// ```
+/// Ensure to rerun on nightly regularly!
+/// (if anyone has any better ideas that doesn't require remembering to run a
+/// command manually, please submit an issue or PR)
 pub const TARGETS: [&str; 271] = [
     "aarch64-apple-darwin",
     "aarch64-apple-ios",

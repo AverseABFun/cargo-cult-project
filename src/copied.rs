@@ -1,6 +1,9 @@
-// Copied from crate rustup-mirror(https://github.com/jiegec/rustup-mirror)
-// Some modifications made due to deprecated/changed APIs
-// (and differing purposes/necessities)
+//! Copied from crate [rustup-mirror](https://crates.io/crates/rustup-mirror/0.8.1)
+//! Some modifications made due to deprecated/changed APIs
+//! (and differing purposes/necessities).
+//!
+//! Note that I(the maintainer of rust-pkg-gen) wrote the doc comments, NOT
+//! the maintainer of [rustup-mirror](https://crates.io/crates/rustup-mirror/0.8.1).
 
 use anyhow::{anyhow, Error};
 use filebuffer::FileBuffer;
@@ -12,8 +15,11 @@ use std::path::{Component, Path, PathBuf};
 use toml::Value;
 use url::Url;
 
+/// The default upstream URL. Usually passed to [`download`] or [`download_all`]
+/// when you don't have a custom upstream url to use.
 pub const DEFAULT_UPSTREAM_URL: &str = "https://static.rust-lang.org/";
 
+/// Produces the SHA256 hash of the provided file
 fn file_sha256(file_path: &Path) -> Option<String> {
     let file = Path::new(file_path);
     if file.exists() {
@@ -24,6 +30,7 @@ fn file_sha256(file_path: &Path) -> Option<String> {
     }
 }
 
+/// Download a path from the provided upstream URL.
 fn download(upstream_url: &str, dir: &str, path: &str) -> Result<PathBuf, Error> {
     println!("Downloading file {}...", path);
     let manifest = format!("{}{}", upstream_url, path);
@@ -50,6 +57,7 @@ fn download(upstream_url: &str, dir: &str, path: &str) -> Result<PathBuf, Error>
     Ok(mirror.join(path))
 }
 
+/// I'm honestly unsure what this one does. If you know, please submit an issue or PR!
 pub fn normalize_path(path: &Path) -> PathBuf {
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
@@ -77,6 +85,13 @@ pub fn normalize_path(path: &Path) -> PathBuf {
     ret
 }
 
+/// This is the beefy function. It takes an absurd number of arguments
+/// and based on them downloads a certain subset of the rust components
+/// that are relevant.
+///
+/// I changed this one from the original crate a *lot*. This is based
+/// on part of the main function in the original crate with many more
+/// validations and miscellaneous changes.
 pub fn download_all(
     channels: Vec<&str>,
     upstream_url: &str,
@@ -87,22 +102,40 @@ pub fn download_all(
     for_targets: Vec<&str>,
     quiet: bool,
     format_map: HashMap<&str, Vec<crate::Format>>,
-) {
+) -> Option<Error> {
     for channel in channels.clone() {
         if !crate::targets::RELEASE_CHANNELS.contains(&channel) {
-            return;
+            return Some(anyhow!("invalid channel"));
         }
     }
     for target in targets.clone() {
         if !crate::targets::TARGETS.contains(&target) {
-            return;
+            return Some(anyhow!("invalid rust target"));
         }
     }
     for target in for_targets.clone() {
         if !crate::targets::TARGETS.contains(&target) {
-            return;
+            return Some(anyhow!("invalid compilation target"));
         }
     }
+    for (target, formats) in format_map {
+        if !targets.contains(&target) {
+            return Some(anyhow!("target that is not being built for in target map"));
+        }
+        for format in formats {
+            if !vec![
+                String::from("msi"),
+                String::from("pkg"),
+                String::from("gz"),
+                String::from("xz"),
+            ]
+            .contains(&format.format)
+            {
+                return Some(anyhow!("invalid format {}", format.format));
+            }
+        }
+    }
+
     let mut all_targets = HashSet::new();
 
     // All referenced files
@@ -336,4 +369,5 @@ pub fn download_all(
             println!("Producing /{}", alt_sha256_new_file_name);
         }
     }
+    None
 }
