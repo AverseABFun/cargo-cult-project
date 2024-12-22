@@ -8,7 +8,7 @@ toolchains = [
         "x86_64-unknown-linux-gnu",
         "x86_64-pc-windows-gnu",
     ], targets = [
-        "x86_64-unknown-linux-gnu",
+        "aarch64-apple-darwin",
     ], format-map = { "x86_64-pc-windows-gnu" = "x86_64-pc-windows-gnu", "x86_64-unknown-linux-gnu" = "x86_64-unknown-linux-gnu" } },
 ]
 
@@ -19,9 +19,10 @@ x86_64-pc-windows-gnu = [
     # Excluding the suffix, should be one of "msi" "pkg" "gz" "xz".
     # msi and pkg should only be provided for windows and darwin, respectively
 
+    # msi and pkg will only install rustc, cargo, rustdoc, and rust-std
+
     "gz",
     # elements past the first are only available if the suffix(or assumed suffix) is "-if-available". They should be one of "gz" "xz". Cannot include suffixes.
-    "xz",
 ]
 
 x86_64-unknown-linux-gnu = ["gz-only"]

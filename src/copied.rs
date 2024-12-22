@@ -7,6 +7,7 @@
 
 use anyhow::{anyhow, Error};
 use filebuffer::FileBuffer;
+use log::*;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::fs::{copy, create_dir_all, File};
@@ -14,6 +15,8 @@ use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 use toml::Value;
 use url::Url;
+
+use crate::Suffix;
 
 /// The default upstream URL. Usually passed to [`download`] or [`download_all`]
 /// when you don't have a custom upstream url to use.
@@ -32,7 +35,7 @@ fn file_sha256(file_path: &Path) -> Option<String> {
 
 /// Download a path from the provided upstream URL.
 fn download(upstream_url: &str, dir: &str, path: &str) -> Result<PathBuf, Error> {
-    println!("Downloading file {}...", path);
+    info!("Downloading file {}...", path);
     let manifest = format!("{}{}", upstream_url, path);
     let mut response = reqwest::blocking::get(&manifest)?;
     let mirror = Path::new(dir);
@@ -96,10 +99,10 @@ pub fn download_all(
     channels: Vec<&str>,
     upstream_url: &str,
     orig_path: &str,
-    targets: Vec<&str>,
+    mut targets: Vec<&str>,
     to_path: &str,
-    components: Vec<&str>,
-    for_targets: Vec<&str>,
+    mut components: Vec<&str>,
+    platforms: Vec<&str>,
     quiet: bool,
     format_map: HashMap<&str, Vec<crate::Format>>,
 ) -> Option<Error> {
@@ -113,14 +116,41 @@ pub fn download_all(
             return Some(anyhow!("invalid rust target"));
         }
     }
-    for target in for_targets.clone() {
+    for target in platforms.clone() {
         if !crate::targets::TARGETS.contains(&target) {
             return Some(anyhow!("invalid compilation target"));
         }
+        let idx = targets.binary_search(&target);
+        if idx.is_ok() {
+            targets.swap_remove(idx.unwrap());
+        }
     }
-    for (target, formats) in format_map {
-        if !targets.contains(&target) {
+    for (target, formats) in format_map.clone() {
+        if !platforms.contains(&target) {
             return Some(anyhow!("target that is not being built for in target map"));
+        }
+        if formats.len() < 1 {
+            return Some(anyhow!("format list is empty"));
+        }
+        if formats[0].format == "msi" && !target.contains("windows") {
+            if formats[0].suffix == Suffix::Only {
+                return Some(anyhow!(
+                    "target {target} is not windows but formats require msi"
+                ));
+            }
+            if !quiet {
+                warn!("target {target} is not windows but formats want msi; continuing");
+            }
+        }
+        if formats[0].format == "pkg" && !target.contains("apple") {
+            if formats[0].suffix == Suffix::Only {
+                return Some(anyhow!(
+                    "target {target} is not apple but formats require pkg"
+                ));
+            }
+            if !quiet {
+                warn!("target {target} is not apple but formats want pkg; continuing");
+            }
         }
         for format in formats {
             if !vec![
@@ -155,15 +185,21 @@ pub fn download_all(
         let mut sha256_file = File::open(sha256_file_path.clone()).unwrap();
         let mut sha256_data = String::new();
         sha256_file.read_to_string(&mut sha256_data).unwrap();
-        assert_eq!(
-            file_sha256(file_path.as_path()).unwrap(),
-            &sha256_data[..64]
-        );
+        let sha256 = file_sha256(file_path.as_path()).unwrap();
+        if sha256 != &sha256_data[..64] {
+            return Some(anyhow!(
+                "expected SHA256 of {name} to be {} but was {}",
+                &sha256_data[..64],
+                sha256
+            ));
+        }
 
         let mut value = data.parse::<Value>().unwrap();
-        assert_eq!(value["manifest-version"].as_str(), Some("2"));
+        if value["manifest-version"].as_str() != Some("2") {
+            return Some(anyhow!("manifest version of channel {channel} not 2"));
+        }
 
-        for ele in for_targets.clone() {
+        for ele in platforms.clone() {
             if ele.contains("windows") {
                 let artifacts = value["artifacts"]["installer-msi"]["target"][ele][0]
                     .as_table_mut()
@@ -195,7 +231,7 @@ pub fn download_all(
                     hash_file_cont = file_sha256(file.as_path());
                     assert_eq!(Some(chksum_upstream), hash_file_cont.as_deref());
                 } else if !quiet {
-                    println!("File {} already downloaded, skipping", file_name);
+                    info!("File {} already downloaded, skipping", file_name);
                 }
 
                 if need_download || hash_file_missing {
@@ -204,10 +240,26 @@ pub fn download_all(
                         .write_all(hash_file_cont.unwrap().as_bytes())
                         .unwrap();
                     if !quiet {
-                        println!("Writing checksum for file {}", file_name);
+                        info!("Writing checksum for file {}", file_name);
                     }
                 }
-            } else if ele.contains("darwin") {
+                let idx = components.binary_search(&"rustc");
+                if idx.is_ok() {
+                    components.swap_remove(idx.unwrap());
+                }
+                let idx = components.binary_search(&"cargo");
+                if idx.is_ok() {
+                    components.swap_remove(idx.unwrap());
+                }
+                let idx = components.binary_search(&"rustdoc");
+                if idx.is_ok() {
+                    components.swap_remove(idx.unwrap());
+                }
+                let idx = components.binary_search(&"rust-std");
+                if idx.is_ok() {
+                    components.swap_remove(idx.unwrap());
+                }
+            } else if ele.contains("apple") {
                 let artifacts = value["artifacts"]["installer-pkg"]["target"][ele]
                     .as_table_mut()
                     .unwrap();
@@ -238,7 +290,7 @@ pub fn download_all(
                     hash_file_cont = file_sha256(file.as_path());
                     assert_eq!(Some(chksum_upstream), hash_file_cont.as_deref());
                 } else if !quiet {
-                    println!("File {} already downloaded, skipping", file_name);
+                    info!("File {} already downloaded, skipping", file_name);
                 }
 
                 if need_download || hash_file_missing {
@@ -247,19 +299,38 @@ pub fn download_all(
                         .write_all(hash_file_cont.unwrap().as_bytes())
                         .unwrap();
                     if !quiet {
-                        println!("Writing checksum for file {}", file_name);
+                        info!("Writing checksum for file {}", file_name);
                     }
                 }
+                let idx = components.binary_search(&"rustc");
+                if idx.is_ok() {
+                    components.swap_remove(idx.unwrap());
+                }
+                let idx = components.binary_search(&"cargo");
+                if idx.is_ok() {
+                    components.swap_remove(idx.unwrap());
+                }
+                let idx = components.binary_search(&"rustdoc");
+                if idx.is_ok() {
+                    components.swap_remove(idx.unwrap());
+                }
+                let idx = components.binary_search(&"rust-std");
+                if idx.is_ok() {
+                    components.swap_remove(idx.unwrap());
+                }
             }
+        }
+        if !components.contains(&"rust-std") {
+            components.push("rust-std")
         }
 
         let pkgs = value["pkg"].as_table_mut().unwrap();
         let keys: Vec<String> = pkgs.keys().cloned().collect();
-        for pkg_name in keys {
-            if !components.contains(&pkg_name.as_str()) {
+        for component in keys {
+            if !components.contains(&component.as_str()) {
                 continue;
             }
-            let pkg = pkgs.get_mut(&pkg_name).unwrap().as_table_mut().unwrap();
+            let pkg = pkgs.get_mut(&component).unwrap().as_table_mut().unwrap();
             let pkg_targets = pkg.get_mut("target").unwrap().as_table_mut().unwrap();
             for (target, pkg_target) in pkg_targets {
                 let pkg_target = pkg_target.as_table_mut().unwrap();
@@ -268,7 +339,9 @@ pub fn download_all(
                 // set available to false and do not download
                 // but we will keep this table in the toml, which is required for newer version of
                 // rustup
-                if !(targets.contains(&target.as_str()) || *target == "*") {
+                if !(platforms.contains(&target.as_str()) || *target == "*")
+                    && !targets.contains(&target.as_str())
+                {
                     *pkg_target.get_mut("available").unwrap() = toml::Value::Boolean(false);
                     continue;
                 }
@@ -278,6 +351,24 @@ pub fn download_all(
 
                     let prefixes = ["", "xz_"];
                     for prefix in prefixes.iter() {
+                        if !targets.contains(&target.as_str()) {
+                            if *prefix == "xz_"
+                                && !format_map.clone()[target.as_str()]
+                                    .clone()
+                                    .into_iter()
+                                    .any(|v| v.format == "xz")
+                            {
+                                continue;
+                            }
+                            if *prefix == ""
+                                && !format_map.clone()[target.as_str()]
+                                    .clone()
+                                    .into_iter()
+                                    .any(|v| v.format == "gz")
+                            {
+                                continue;
+                            }
+                        }
                         let url =
                             Url::parse(pkg_target[&format!("{}url", prefix)].as_str().unwrap())
                                 .unwrap();
@@ -311,7 +402,7 @@ pub fn download_all(
                             hash_file_cont = file_sha256(file.as_path());
                             assert_eq!(Some(chksum_upstream), hash_file_cont.as_deref());
                         } else if !quiet {
-                            println!("File {} already downloaded, skipping", file_name);
+                            info!("File {} already downloaded, skipping", file_name);
                         }
 
                         if need_download || hash_file_missing {
@@ -320,7 +411,7 @@ pub fn download_all(
                                 .write_all(hash_file_cont.unwrap().as_bytes())
                                 .unwrap();
                             if !quiet {
-                                println!("Writing checksum for file {}", file_name);
+                                info!("Writing checksum for file {}", file_name);
                             }
                         }
 
@@ -338,7 +429,7 @@ pub fn download_all(
         create_dir_all(path.parent().unwrap()).unwrap();
         let mut file = File::create(path.clone()).unwrap();
         if !quiet {
-            println!("Producing /{}", name);
+            info!("Producing /{}", name);
         }
         file.write_all(output.as_bytes()).unwrap();
 
@@ -346,7 +437,7 @@ pub fn download_all(
         let sha256_new_file_path = Path::new(to_path).join(&sha256_name);
         let mut file = File::create(sha256_new_file_path.clone()).unwrap();
         if !quiet {
-            println!("Producing /{}", sha256_name);
+            info!("Producing /{}", sha256_name);
         }
         file.write_all(format!("{}  channel-rust-{}.toml", sha256_new_file, channel).as_bytes())
             .unwrap();
@@ -358,7 +449,7 @@ pub fn download_all(
         create_dir_all(alt_path.parent().unwrap()).unwrap();
         copy(path, alt_path).unwrap();
         if !quiet {
-            println!("Producing /{}", alt_name);
+            info!("Producing /{}", alt_name);
         }
 
         let alt_sha256_new_file_name =
@@ -366,7 +457,7 @@ pub fn download_all(
         let alt_sha256_new_file_path = Path::new(to_path).join(&alt_sha256_new_file_name);
         copy(sha256_new_file_path, alt_sha256_new_file_path).unwrap();
         if !quiet {
-            println!("Producing /{}", alt_sha256_new_file_name);
+            info!("Producing /{}", alt_sha256_new_file_name);
         }
     }
     None

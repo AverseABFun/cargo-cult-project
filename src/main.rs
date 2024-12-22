@@ -4,6 +4,7 @@
 //! but that will be changed eventually as a non-breaking change.
 
 use clap::Parser;
+use log::*;
 use rand::{Rng, SeedableRng};
 use rust_pkg_gen::resources::TemplateAssets;
 use std::{
@@ -84,6 +85,8 @@ fn main() {
         args.quiet = true;
         args.yes = true;
         args.overwrite = true;
+    } else {
+        env_logger::init();
     }
 
     let path = &PathBuf::from(args.path);
@@ -105,12 +108,12 @@ fn main() {
                 .unwrap();
             if !confirmation {
                 if !args.quiet {
-                    println!("Aborting.");
+                    warn!("Aborting.");
                 }
-                std::process::exit(1)
+                return;
             } else {
                 if !args.quiet {
-                    println!("Overwriting.");
+                    info!("Overwriting.");
                 }
                 std::fs::remove_dir_all(args.temp_dir.clone().unwrap()).unwrap();
             }
