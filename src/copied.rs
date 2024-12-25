@@ -1,5 +1,5 @@
 //! Copied from crate [rustup-mirror](https://crates.io/crates/rustup-mirror/0.8.1)
-//! Some modifications made due to deprecated/changed APIs
+//! Lots of modifications made due to deprecated/changed APIs
 //! (and differing purposes/necessities).
 //!
 //! Note that I(the maintainer of rust-pkg-gen) wrote the doc comments, NOT
