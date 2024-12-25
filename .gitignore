@@ -12,6 +12,7 @@ Cargo.lock
 
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
+!src/install/7Zip4Powershell/2.7.0/7Zip4PowerShell.pdb
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

@@ -88,7 +88,7 @@ pub fn normalize_path(path: &Path) -> PathBuf {
     ret
 }
 
-/// This is the beefy function. It takes an absurd number of arguments
+/// This is a beefy function. It takes an absurd number of arguments
 /// and based on them downloads a certain subset of the rust components
 /// that are relevant.
 ///
@@ -127,7 +127,9 @@ pub fn download_all(
     }
     for (target, formats) in format_map.clone() {
         if !platforms.contains(&target) {
-            return Some(anyhow!("target that is not being built for in target map"));
+            return Some(anyhow!(
+                "target {target} that is not being built for in target map"
+            ));
         }
         if formats.len() < 1 {
             return Some(anyhow!("format list is empty"));

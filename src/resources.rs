@@ -8,8 +8,15 @@ use rust_embed::Embed;
 /// The template assets outputted to {temp_dir}/{target}/crates.
 ///
 /// If viewing after running, it will be the output of [`cargo-local-registry`](https://crates.io/crates/cargo-local-registry/0.2.7)
-/// (build alongside this crate in an incredibly janky way)
+/// (built alongside this crate in an incredibly janky way)
 pub struct TemplateAssets;
+
+#[derive(Embed)]
+#[folder = "src/install/"]
+#[prefix = "install/"]
+/// The install assets outputted to {temp_dir}/{target}
+/// Contains (as of writing this) install.sh, install.ps1, and install.fish
+pub struct InstallAssets;
 
 /// The README file automatically placed into {temp_dir}/{target}/crates
 /// after [`cargo-local-registry`](https://crates.io/crates/cargo-local-registry/0.2.7) runs.

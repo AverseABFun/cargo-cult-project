@@ -6,11 +6,11 @@
 use clap::Parser;
 use log::*;
 use rand::{Rng, SeedableRng};
-use rust_pkg_gen::resources::TemplateAssets;
+use rust_pkg_gen::resources::{InstallAssets, TemplateAssets};
 use std::{
     fs::{self, write},
-    path::PathBuf,
-    process::Stdio,
+    path::{Path, PathBuf},
+    process::{self, Stdio},
 };
 
 fn gen_char() -> u8 {
@@ -65,6 +65,35 @@ struct Cli {
         help = "Saves all temporary files"
     )]
     save_temp: bool,
+    #[arg(
+        long = "no-download-toolchain",
+        default_value_t = false,
+        help = "Disable downloading the toolchain for major speed ups"
+    )]
+    no_download_toolchain: bool,
+}
+
+fn move_files_in_directory(src_dir: &str, dest_dir: &str) -> std::io::Result<()> {
+    if !Path::new(dest_dir).exists() {
+        fs::create_dir_all(dest_dir)?;
+    }
+
+    let entries = fs::read_dir(src_dir)?;
+
+    for entry in entries {
+        let entry = entry?;
+        let entry_path = entry.path();
+
+        if entry_path.is_dir() {
+            continue;
+        }
+
+        let dest_path = Path::new(dest_dir).join(entry_path.file_name().unwrap());
+
+        fs::rename(entry_path, dest_path)?;
+    }
+
+    Ok(())
 }
 
 fn generate_crates(
@@ -193,24 +222,131 @@ fn main() {
             )
             .unwrap();
 
-            rust_pkg_gen::copied::download_all(
-                vec![&toolchain.channel],
-                rust_pkg_gen::copied::DEFAULT_UPSTREAM_URL,
-                dir.join("tmp").to_str().unwrap(),
-                toolchain.targets.iter().map(|s| &**s).collect(),
-                dir.join("toolchain").to_str().unwrap(),
-                toolchain.components.iter().map(|s| &**s).collect(),
-                toolchain.platforms.iter().map(|s| &**s).collect(),
-                args.quiet,
-                toolchain
-                    .format_map
-                    .iter()
-                    .map(|(k, v)| (k.as_str(), cfg.formats[v].clone()))
-                    .collect(),
-            );
+            if !args.no_download_toolchain {
+                if let Some(err) = rust_pkg_gen::copied::download_all(
+                    vec![&toolchain.channel],
+                    rust_pkg_gen::copied::DEFAULT_UPSTREAM_URL,
+                    dir.join("tmp").to_str().unwrap(),
+                    toolchain.targets.iter().map(|s| &**s).collect(),
+                    dir.join("toolchain").to_str().unwrap(),
+                    toolchain.components.iter().map(|s| &**s).collect(),
+                    toolchain.platforms.iter().map(|s| &**s).collect(),
+                    args.quiet,
+                    toolchain
+                        .format_map
+                        .iter()
+                        .map(|(k, v)| (k.as_str(), cfg.formats[v].clone()))
+                        .collect(),
+                ) {
+                    error!("{}", err);
+                    process::exit(1);
+                };
+            }
 
-            if !args.save_temp {
+            if !args.save_temp && !args.no_download_toolchain {
                 fs::remove_dir_all(dir.join("tmp").to_str().unwrap()).unwrap();
+            }
+
+            if !args.no_download_toolchain {
+                let dist_data_path = dir
+                    .join("toolchain")
+                    .join(format!("dist/channel-rust-{}.toml", toolchain.channel));
+                let data = fs::read_to_string(dist_data_path.to_str().unwrap()).unwrap();
+
+                let dist_data = data.parse::<toml::Value>().unwrap();
+                let dist_dir_name = dist_data["date"].as_str().unwrap();
+
+                move_files_in_directory(
+                    dir.join("toolchain")
+                        .join("dist")
+                        .join(dist_dir_name)
+                        .to_str()
+                        .unwrap(),
+                    dir.join("toolchain").to_str().unwrap(),
+                )
+                .unwrap();
+
+                if !args.save_temp {
+                    fs::remove_dir_all(dir.join("toolchain").join("dist").to_str().unwrap())
+                        .unwrap();
+                    fs::remove_file(
+                        dir.join("toolchain")
+                            .join(format!("channel-rust-{}.toml", toolchain.channel)),
+                    )
+                    .unwrap();
+                    fs::remove_file(
+                        dir.join("toolchain")
+                            .join(format!("channel-rust-{}.toml.sha256", toolchain.channel)),
+                    )
+                    .unwrap();
+                }
+            }
+
+            for ele in InstallAssets::iter() {
+                let file = InstallAssets::get(&ele).unwrap();
+
+                let ele = std::borrow::Cow::Borrowed(ele.split_once("/").unwrap().1);
+
+                let path = dir.join(PathBuf::from(ele.as_ref()));
+                let prefix = path.parent().unwrap();
+                std::fs::create_dir_all(prefix).unwrap();
+
+                let str_data = std::str::from_utf8(file.data.as_ref());
+
+                if str_data.is_ok() {
+                    std::fs::write(
+                        path,
+                        str_data
+                            .unwrap()
+                            .replace("&?TOOLCHAIN.CHANNEL", &toolchain.channel)
+                            .replace("&?TOOLCHAIN.COMPONENTS", &toolchain.components.join(" "))
+                            .replace(
+                                "&?TOOLCHAIN.PKG",
+                                if toolchain
+                                    .format_map
+                                    .iter()
+                                    .map(|(_, v)| {
+                                        cfg.formats[v]
+                                            .iter()
+                                            .map(|v| v.format.clone())
+                                            .collect::<Vec<String>>()
+                                            .contains(&"pkg".to_string())
+                                    })
+                                    .collect::<Vec<bool>>()
+                                    .iter()
+                                    .any(|v| *v)
+                                {
+                                    "$true"
+                                } else {
+                                    "$false"
+                                },
+                            )
+                            .replace(
+                                "&?TOOLCHAIN.MSI",
+                                if toolchain
+                                    .format_map
+                                    .iter()
+                                    .map(|(_, v)| {
+                                        cfg.formats[v]
+                                            .iter()
+                                            .map(|v| v.format.clone())
+                                            .collect::<Vec<String>>()
+                                            .contains(&"msi".to_string())
+                                    })
+                                    .collect::<Vec<bool>>()
+                                    .iter()
+                                    .any(|v| *v)
+                                {
+                                    "$true"
+                                } else {
+                                    "$false"
+                                },
+                            ),
+                    )
+                    .unwrap();
+                } else {
+                    std::fs::write(path, file.data).unwrap();
+                }
             }
         }
     }
