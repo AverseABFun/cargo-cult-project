@@ -1,0 +1,6 @@
+{
+    "[toml]": {
+        "editor.formatOnSave": false
+        // ^^ because of src/template/rust-toolchain.toml and the toml formatter not playing well with the weird template things I added
+    }
+}

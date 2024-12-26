@@ -1,4 +1,4 @@
-[toolchain]
+[toolchain] # to be honest, probably only targets is required(can someone confirm?), but i'm not taking chances
 channel = "{?TOOLCHAIN.CHANNEL}"
 components = [ {?TOOLCHAIN.COMPONENTS} ]
 targets = [ {?TOOLCHAIN.TARGETS} ]
