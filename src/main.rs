@@ -75,6 +75,12 @@ struct Cli {
         help = "Disable downloading the toolchain for major speed ups"
     )]
     no_download_toolchain: bool,
+    #[arg(
+        long = "no-build-crates",
+        default_value_t = false,
+        help = "Disable running the build.sh file for crates(mostly used for debugging)"
+    )]
+    no_build_crates: bool,
 }
 
 fn move_files_in_directory(src_dir: &str, dest_dir: &str) -> std::io::Result<()> {
@@ -181,10 +187,10 @@ fn main() {
                 let file = TemplateAssets::get(&ele).unwrap();
 
                 let ele = std::borrow::Cow::Borrowed(ele.split_once("/").unwrap().1);
+                let ele = ele.replace("template.Cargo.toml", "Cargo.toml");
+                let ele = ele.as_str();
 
-                let path = dir
-                    .join(PathBuf::from("crates"))
-                    .join(PathBuf::from(ele.as_ref()));
+                let path = dir.join(PathBuf::from("crates")).join(PathBuf::from(ele));
                 let prefix = path.parent().unwrap();
                 std::fs::create_dir_all(prefix).unwrap();
 
@@ -207,25 +213,27 @@ fn main() {
                 .unwrap();
             }
 
-            let mut build_c = std::process::Command::new("bash");
-            let mut build = build_c.arg(
-                dir.join(PathBuf::from("crates"))
-                    .join(PathBuf::from("build.sh")),
-            );
-            build = build.env(
-                "CARGO_BIN_FILE_CARGO_LOCAL_REGISTRY",
-                env!("CARGO_BIN_FILE_CARGO_LOCAL_REGISTRY"),
-            );
-            if args.quiet {
-                build = build
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null())
-                    .stdin(Stdio::null());
+            if !args.no_build_crates {
+                let mut build_c = std::process::Command::new("bash");
+                let mut build = build_c.arg(
+                    dir.join(PathBuf::from("crates"))
+                        .join(PathBuf::from("build.sh")),
+                );
+                build = build.env(
+                    "CARGO_BIN_FILE_CARGO_LOCAL_REGISTRY",
+                    env!("CARGO_BIN_FILE_CARGO_LOCAL_REGISTRY"),
+                );
+                if args.quiet {
+                    build = build
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .stdin(Stdio::null());
+                }
+                if args.save_temp {
+                    build = build.arg("save")
+                }
+                build.spawn().unwrap().wait().unwrap();
             }
-            if args.save_temp {
-                build = build.arg("save")
-            }
-            build.spawn().unwrap().wait().unwrap();
             write(
                 dir.join(PathBuf::from("crates"))
                     .join(PathBuf::from("README.md")),

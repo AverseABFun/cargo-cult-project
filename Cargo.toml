@@ -1,6 +1,6 @@
 [package]
 name = "rust-pkg-gen"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Creates so-called rust 'packages' containing rust toolchains and crates."
@@ -8,6 +8,11 @@ repository = "https://github.com/AverseABFun/rust-pkg-gen"
 homepage = "https://github.com/AverseABFun/rust-pkg-gen"
 authors = ["Arthur Beck <averse.abfun@gmail.com>"]
 readme = "README.md"
+exclude = [
+    "/.github/**",
+    "/.vscode/**",
+    "/rust-config.toml", # don't need the example
+]
 
 [dependencies]
 anyhow = "1.0.94"
