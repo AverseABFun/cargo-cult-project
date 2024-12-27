@@ -1,6 +1,6 @@
 [package]
 name = "rust-pkg-gen"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Creates so-called rust 'packages' containing rust toolchains and crates."

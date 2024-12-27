@@ -23,7 +23,10 @@ mod tests;
 pub struct Toolchain {
     /// The edition of rust to use. Should be one of 2015, 2018, 2021, or 2024,
     /// but isn't directly validated. Validation could be changed in the future.
-    pub edition: String,
+    ///
+    /// Deprecated as it's pretty much unnecessary
+    #[deprecated(since = "1.2.0")]
+    pub edition: Option<String>,
     /// The channel of rust to use. Should be in [`targets::RELEASE_CHANNELS`].
     pub channel: String,
     /// The components of rust to install.

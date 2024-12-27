@@ -198,7 +198,6 @@ fn main() {
                     path,
                     std::str::from_utf8(file.data.as_ref())
                         .unwrap()
-                        .replace("{?TOOLCHAIN.EDITION}", &toolchain.edition)
                         .replace("{?TOOLCHAIN.CHANNEL}", &toolchain.channel)
                         .replace(
                             "{?TOOLCHAIN.TARGETS}",

@@ -1,6 +1,6 @@
 [x64_package_linux_rust_pkg_gen]
 toolchains = [
-    { edition = "2021", channel = "nightly", components = [
+    { channel = "nightly", components = [
         "rustfmt",
         "rustc",
         "cargo",
@@ -32,7 +32,7 @@ x86_64-unknown-linux-gnu = ["gz-only"]
 
 [x64_package_linux_rust_pkg_gen2]
 toolchains = [
-    { edition = "2021", channel = "stable", components = [
+    { channel = "stable", components = [
         "rust-docs",
         "rustc",
         "cargo",
