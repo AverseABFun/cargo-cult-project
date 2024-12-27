@@ -2,5 +2,8 @@
     "[toml]": {
         "editor.formatOnSave": false
         // ^^ because of src/template/rust-toolchain.toml and the toml formatter not playing well with the weird template things I added
+    },
+    "markdownlint.config": {
+        "MD041": false // disable it wanting the first line to be a top-level heading
     }
 }

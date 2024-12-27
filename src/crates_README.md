@@ -6,7 +6,7 @@ registry = 'sparse+<https://index.crates.io/>'
 replace-with = 'local-registry'
 
 [source.local-registry]
-local-registry = '{?TOOLCHAIN.CRATES_DIR}' # double-check this path is correct, especially if you are creating the package on a different machine than the machine you are creating the package for
+local-registry = '' # add the path to the crates folder(the folder containing this file)
 ```
 
-(psst- if you know how to install crate files to the registry manually, make an issue or PR on [rust-pkg-gen](https://github.com/AverseABFun/rust-pkg-gen)!)
+(psst- if you know how to install crate files to the registry manually(smth like `cargo registry add /path/to/crate/file`), make an issue or PR on [rust-pkg-gen](https://github.com/AverseABFun/rust-pkg-gen)!)

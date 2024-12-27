@@ -3,12 +3,16 @@
 //! The binary entrypoint to rust-pkg-gen. Currently contains most of the code,
 //! but that will be changed eventually as a non-breaking change.
 
+use chrono::prelude::*;
 use clap::Parser;
+use core::str;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use log::*;
 use rand::{Rng, SeedableRng};
 use rust_pkg_gen::resources::{InstallAssets, TemplateAssets};
 use std::{
-    fs::{self, write},
+    fs::{self, write, File},
     path::{Path, PathBuf},
     process::{self, Stdio},
 };
@@ -160,6 +164,15 @@ fn main() {
     for (item, cfg) in data {
         let dir = dir.join(item);
         for toolchain in &cfg.toolchains {
+            let chars: &[u8; 6] = &[
+                gen_char(),
+                gen_char(),
+                gen_char(),
+                gen_char(),
+                gen_char(),
+                gen_char(),
+            ];
+            let dir = dir.join(str::from_utf8(chars).unwrap());
             for ele in TemplateAssets::iter() {
                 let file = TemplateAssets::get(&ele).unwrap();
 
@@ -348,6 +361,17 @@ fn main() {
                     std::fs::write(path, file.data).unwrap();
                 }
             }
+            let tar_gz = File::create(format!(
+                "rust-pkg-{}-{}-{}.tar.gz",
+                Local::now().date_naive().format("%Y-%m-%d"),
+                str::from_utf8(chars).unwrap(),
+                toolchain.channel
+            ))
+            .unwrap();
+            let enc = GzEncoder::new(tar_gz, Compression::default());
+            let mut tar = tar::Builder::new(enc);
+            tar.append_dir_all("", dir).unwrap();
+            tar.finish().unwrap();
         }
     }
 }

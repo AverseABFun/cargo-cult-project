@@ -262,7 +262,7 @@ pub fn download_all(
                     components.swap_remove(idx.unwrap());
                 }
             } else if ele.contains("apple") {
-                let artifacts = value["artifacts"]["installer-pkg"]["target"][ele]
+                let artifacts = value["artifacts"]["installer-pkg"]["target"][ele][0]
                     .as_table_mut()
                     .unwrap();
 
