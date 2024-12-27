@@ -17,6 +17,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - run: rustup toolchain install nightly && rustup default nightly
+    - run: cargo build --verbose -Z bindeps
+    - run: cargo test --verbose -Z bindeps
     - uses: manoadamro/rust-release@v1
       with:
           owner: ${{ github.repository_owner }}
