@@ -6,6 +6,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/AverseABFun/rust-pkg-gen"
 homepage = "https://github.com/AverseABFun/rust-pkg-gen"
 authors = ["Arthur Beck <averse.abfun@gmail.com>"]
+readme = "README.md"
 
 [dependencies]
 anyhow = "1.0.94"
