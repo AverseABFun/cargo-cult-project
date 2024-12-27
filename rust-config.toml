@@ -1,34 +1,34 @@
-# [x64_package_linux_rust_pkg_gen]
-# toolchains = [
-#     { edition = "2021", channel = "nightly", components = [
-#         "rustfmt",
-#         "rustc",
-#         "cargo",
-#     ], crate-id = "2021-nightly-complete", platforms = [
-#         "x86_64-unknown-linux-gnu",
-#         "x86_64-pc-windows-gnu",
-#     ], targets = [
-#         "aarch64-apple-darwin",
-#     ], format-map = { "x86_64-pc-windows-gnu" = "x86_64-pc-windows-gnu", "x86_64-unknown-linux-gnu" = "x86_64-unknown-linux-gnu" } },
-# ]
+[x64_package_linux_rust_pkg_gen]
+toolchains = [
+    { edition = "2021", channel = "nightly", components = [
+        "rustfmt",
+        "rustc",
+        "cargo",
+    ], crate-id = "2021-nightly-complete", platforms = [
+        "x86_64-unknown-linux-gnu",
+        "x86_64-pc-windows-gnu",
+    ], targets = [
+        "aarch64-apple-darwin",
+    ], format-map = { "x86_64-pc-windows-gnu" = "x86_64-pc-windows-gnu", "x86_64-unknown-linux-gnu" = "x86_64-unknown-linux-gnu" } },
+]
 
-# [x64_package_linux_rust_pkg_gen.formats]
-# x86_64-pc-windows-gnu = [
-#     "msi", # no suffix: assume "-if-available". "-if-available" will provide the requested format if it's available,
-#     # "-only" will error out if the requested format isn't available with the provided settings.
-#     # Excluding the suffix, should be one of "msi" "pkg" "gz" "xz".
-#     # msi and pkg should only be provided for windows and darwin, respectively
+[x64_package_linux_rust_pkg_gen.formats]
+x86_64-pc-windows-gnu = [
+    "msi", # no suffix: assume "-if-available". "-if-available" will provide the requested format if it's available,
+    # "-only" will error out if the requested format isn't available with the provided settings.
+    # Excluding the suffix, should be one of "msi" "pkg" "gz" "xz".
+    # msi and pkg should only be provided for windows and darwin, respectively
 
-#     # msi and pkg will only install rustc, cargo, rustdoc, and rust-std
+    # msi and pkg will only install rustc, cargo, rustdoc, and rust-std
 
-#     "gz",
-#     # elements past the first are only available if the suffix(or assumed suffix) is "-if-available". They should be one of "gz" "xz". Cannot include suffixes.
-# ]
+    "gz",
+    # elements past the first are only available if the suffix(or assumed suffix) is "-if-available". They should be one of "gz" "xz". Cannot include suffixes.
+]
 
-# x86_64-unknown-linux-gnu = ["gz-only"]
+x86_64-unknown-linux-gnu = ["gz-only"]
 
-# [x64_package_linux_rust_pkg_gen.crates]
-# "2021-nightly-complete" = { "syn" = "2.0.90" }
+[x64_package_linux_rust_pkg_gen.crates]
+"2021-nightly-complete" = { "syn" = "2.0.90" }
 
 [x64_package_linux_rust_pkg_gen2]
 toolchains = [
