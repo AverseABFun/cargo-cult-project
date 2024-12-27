@@ -11,7 +11,6 @@ env:
 
 jobs:
   build:
-    permissions: write-all
     runs-on: ubuntu-latest
 
     steps:
@@ -19,8 +18,3 @@ jobs:
     - run: rustup toolchain install nightly && rustup default nightly
     - run: cargo build --verbose -Z bindeps
     - run: cargo test --verbose -Z bindeps
-    - uses: manoadamro/rust-release@v1
-      with:
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.repository }}
-          token: ${{ secrets.GITHUB_TOKEN }}
