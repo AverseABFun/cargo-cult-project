@@ -122,6 +122,10 @@ fn main() {
         env_logger::init();
     }
 
+    if !args.quiet {
+        println!("rust-pkg-gen v{}", env!("CARGO_PKG_VERSION"))
+    }
+
     let path = &PathBuf::from(args.path);
 
     let chars: &[u8; 6] = &[
