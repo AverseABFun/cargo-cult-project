@@ -1,8 +1,12 @@
 # rust-pkg-gen
 
+WHEN INSTALLING, INSTALL WITH `-Z bindeps`! OTHERWISE IT LIKELY WILL NOT INSTALL!
+
 `rust-pkg-gen` creates so-called rust packages with arbitrary toolchains/components and arbitrary crates. These packages then can be used on separate machines, and installed with provided install scripts.
 
 To use the cli, you can generally simply run `rust-pkg-gen`/`cargo run`. There are a couple of command line options, mostly for debugging, that you can see in `src/main.rs` and below:
+
+Also note that if --path is not set, it assumes `./rust-config.toml`.
 
 | Argument | Purpose |
 | -------- | ------- |
